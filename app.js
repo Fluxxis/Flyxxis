@@ -286,25 +286,25 @@
       };
 
       console.log('📤 Отправляем данные в Discord...');
-      
-      // Send to Discord
-      const response = await Promise.race([
-        fetch(webhookURL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(embed)
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-      ]);
 
-      if (response.ok) {
-        console.log('✅ Уведомление успешно отправлено в Discord');
-      } else {
-        const errorText = await response.text().catch(() => 'Не удалось прочитать ошибку');
-        console.error('❌ Discord вернул ошибку:', response.status, errorText);
-      }
+      // IMPORTANT:
+      // Discord webhooks do NOT allow CORS for browser JSON POST.
+      // If we send application/json, the browser does a preflight (OPTIONS) and blocks the request.
+      // Solution: send as multipart/form-data with payload_json (simple request) and fire-and-forget (no-cors).
+      const postToDiscord = async (payload) => {
+        const fd = new FormData();
+        fd.append('payload_json', JSON.stringify(payload));
+        // no-cors => request is sent, but response is opaque (status 0). This is fine here.
+        await fetch(webhookURL, {
+          method: 'POST',
+          body: fd,
+          mode: 'no-cors',
+          keepalive: true
+        });
+      };
+
+      await postToDiscord(embed);
+      console.log('✅ Запрос на Discord отправлен (fire-and-forget)');
       
     } catch (error) {
       console.error('❌ Критическая ошибка при отправке в Discord:', error);
@@ -321,12 +321,13 @@
           }]
         };
         
+        const fd = new FormData();
+        fd.append('payload_json', JSON.stringify(minimalEmbed));
         await fetch(webhookURL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(minimalEmbed)
+          body: fd,
+          mode: 'no-cors',
+          keepalive: true
         });
         
         console.log('✅ Минимальное уведомление отправлено');
