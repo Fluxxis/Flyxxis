@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>Bio Cover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="grain"></div>
+    <div class="vignette"></div>
+    <div class="orbs">
+      <span class="orb o1"></span>
+      <span class="orb o2"></span>
+      <span class="orb o3"></span>
+    </div>
+    <canvas id="stars"></canvas>
+  </div>
+
+  <div id="intro" class="intro">
+    <div class="intro__content">
+      <div class="intro__logo">
+        <span class="pulse-ring"></span>
+        <span class="pulse-ring r2"></span>
+        <span class="pulse-ring r3"></span>
+        <div class="intro__dot"></div>
+      </div>
+      <div class="intro__text">
+        <div class="intro__title">loading</div>
+        <div class="intro__sub">tap to enter</div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap" id="app" hidden>
+    <section class="card">
+      <header class="header">
+        <div class="avatar-wrap">
+          <img class="avatar" src="public/ava.png" alt="avatar" />
+          <div class="avatar-ring" aria-hidden="true"></div>
+        </div>
+
+        <div class="who">
+          <h1 id="name" class="name">—</h1>
+          <div class="tagline-row">
+            <a class="discord-mini" id="discordMini" target="_blank" rel="noopener" aria-label="Discord">
+              <img src="public/icon-discord.svg" alt="" />
+            </a>
+            <p id="tagline" class="tagline">—</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="links" role="navigation" aria-label="links">
+        <a class="btn" id="btnRoblox" target="_blank" rel="noopener">
+          <span class="ico"><img src="public/icon-roblox.svg" alt="" /></span>
+          <span>Roblox</span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="btn" id="btnTelegram" target="_blank" rel="noopener">
+          <span class="ico"><img src="public/icon-telegram.svg" alt="" /></span>
+          <span>Telegram</span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="btn" id="btnSpotify" target="_blank" rel="noopener">
+          <span class="ico"><img src="public/icon-spotify.svg" alt="" /></span>
+          <span>Spotify</span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="btn" id="btnTikTok" target="_blank" rel="noopener">
+          <span class="ico"><img src="public/icon-tiktok.svg" alt="" /></span>
+          <span>TikTok</span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+</section>
+</main>
+
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
